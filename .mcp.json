@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "tools-demo": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/yuzicheng/projects/agent-labs/mcp-server-tutorial",
+        "steps/step03_tools_basic.py"
+      ]
+    },
+    "async-demo": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/yuzicheng/projects/agent-labs/mcp-server-tutorial",
+        "steps/step04_tools_async.py"
+      ]
+    },
+    "resources-static": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/yuzicheng/projects/agent-labs/mcp-server-tutorial",
+        "steps/step05_resources_static.py"
+      ]
+    },
+    "resources-dynamic": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/yuzicheng/projects/agent-labs/mcp-server-tutorial",
+        "steps/step06_resources_dynamic.py"
+      ]
+    }
+  }
+}
