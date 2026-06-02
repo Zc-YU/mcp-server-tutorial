@@ -19,7 +19,7 @@ from mcp.server.fastmcp import FastMCP
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(message)s")
 
-mcp = FastMCP("Resources Dynamic Demo", host="127.0.0.1", port=8000)
+mcp = FastMCP("Resources Dynamic Demo", host="0.0.0.0", port=8000)
 
 # ============================================================
 # 模拟数据库
@@ -181,13 +181,7 @@ def list_resource_uris() -> dict:
     LLM 可以通过它快速了解有哪些资源可用。
     """
     return {
-        "static": [
-            "config://app",
-            "info://status",
-            "stats://summary",
-            "help://quickstart",
-        ],
-        "dynamic": [
+        "resources": [
             "note://{note_id}",
             "note://{note_id}/raw",
             "note://{note_id}/summary",

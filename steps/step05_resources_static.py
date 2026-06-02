@@ -13,13 +13,16 @@
 运行: uv run steps/step05_resources_static.py
 测试: uv run mcp dev steps/step05_resources_static.py
 """
-import sys
 import logging
+import sys
+
 from mcp.server.fastmcp import FastMCP
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(message)s")
 
-mcp = FastMCP("Resources Static Demo", host="127.0.0.1", port=8000)
+mcp = FastMCP("Resources Static Demo", host="0.0.0.0", port=8000)
+
+COUNTER = {"value": 0}
 
 
 # ============================================================
@@ -53,7 +56,7 @@ def get_status() -> str:
 # 2. JSON 资源 — 返回 dict，自动序列化
 # ============================================================
 
-@mcp.resource("stats://summary")
+@mcp.resource("stats://summary", mime_type="application/json")
 def get_stats() -> dict:
     """返回统计数据。FastMCP 自动把 dict 序列化为 JSON。
 
@@ -95,6 +98,30 @@ def get_quickstart() -> str:
 ## 查看统计
 读取 `stats://summary` 资源获取使用统计。
 """
+
+
+# ============================================================
+# 4. Tool + Resource 协作 — Tool 写状态，Resource 读状态
+# ============================================================
+
+@mcp.resource("state://counter", mime_type="application/json")
+def get_counter_state() -> dict:
+    """读取当前计数器状态。
+
+    Resource 只负责读数据，不修改状态。
+    """
+    return {"counter": COUNTER["value"]}
+
+
+@mcp.tool()
+def increment_counter(by: int = 1) -> dict:
+    """增加计数器数值。
+
+    这是一个 Tool，会修改服务端状态。修改后可以通过
+    state://counter 资源读取最新值。
+    """
+    COUNTER["value"] += by
+    return {"counter": COUNTER["value"]}
 
 
 if __name__ == "__main__":
