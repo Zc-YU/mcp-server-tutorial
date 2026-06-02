@@ -49,6 +49,16 @@
         "/Users/yuzicheng/projects/agent-labs/mcp-server-tutorial",
         "steps/step07_prompts.py"
       ]
+    },
+    "smart-notes": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/yuzicheng/projects/agent-labs/mcp-server-tutorial",
+        "src/smart_notes/server.py"
+      ]
     }
   }
 }
