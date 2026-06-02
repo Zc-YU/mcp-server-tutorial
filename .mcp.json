@@ -39,6 +39,16 @@
         "/Users/yuzicheng/projects/agent-labs/mcp-server-tutorial",
         "steps/step06_resources_dynamic.py"
       ]
+    },
+    "prompts-demo": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/yuzicheng/projects/agent-labs/mcp-server-tutorial",
+        "steps/step07_prompts.py"
+      ]
     }
   }
 }

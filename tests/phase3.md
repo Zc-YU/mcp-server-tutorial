@@ -107,9 +107,9 @@ uv run mcp dev steps/step06_resources_dynamic.py
 
 - [x] 理解了 Resource 是只读数据（读），Tool 是操作（写）
 - [x] 在 Inspector 中成功读取了静态资源
-- [ ] 观察到了 `increment_counter` (Tool) + `state://counter` (Resource) 的协作
+- [x] 观察到了 `increment_counter` (Tool) + `state://counter` (Resource) 的协作
 - [ ] 在 Inspector 中成功读取了动态资源的不同 note_id
-- [ ] 理解了 URI 模板中 `{param}` 如何绑定函数参数
+- [x] 理解了 URI 模板中 `{param}` 如何绑定函数参数
 - [ ] 对比了同一笔记的 Markdown / JSON / Summary 三种视图
 - [ ] 理解了 "先读索引（notes://all），再读详情（note://xxx）" 的资源组织模式
 
