@@ -24,10 +24,13 @@ import sys
 import json
 import logging
 import os
+import re
+import unicodedata
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
 from enum import Enum
+from urllib.parse import unquote
 
 from pydantic import BaseModel, Field
 from mcp.server.fastmcp import FastMCP, Context
@@ -143,12 +146,75 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+PINYIN_SLUG_MAP = {
+    "测": "ce",
+    "试": "shi",
+    "笔": "bi",
+    "记": "ji",
+    "中": "zhong",
+    "文": "wen",
+    "学": "xue",
+    "习": "xi",
+    "工": "gong",
+    "作": "zuo",
+    "生": "sheng",
+    "活": "huo",
+    "项": "xiang",
+    "目": "mu",
+    "计": "ji",
+    "划": "hua",
+    "总": "zong",
+    "结": "jie",
+    "购": "gou",
+    "物": "wu",
+    "清": "qing",
+    "单": "dan",
+    "周": "zhou",
+    "末": "mo",
+    "异": "yi",
+    "步": "bu",
+    "编": "bian",
+    "程": "cheng",
+    "要": "yao",
+    "点": "dian",
+    "欢": "huan",
+    "迎": "ying",
+    "使": "shi",
+    "用": "yong",
+}
+
+
 def _make_id(title: str) -> str:
     """从标题生成 URL 友好的 ID。"""
-    import re
-    slug = re.sub(r"[^\w\s-]", "", title.lower())
-    slug = re.sub(r"[-\s]+", "-", slug).strip("-")
+    parts: list[str] = []
+    for char in unicodedata.normalize("NFKC", title.lower()):
+        if char in PINYIN_SLUG_MAP:
+            parts.append(f"-{PINYIN_SLUG_MAP[char]}-")
+        elif char.isascii() and (char.isalnum() or char in {"_", "-"}):
+            parts.append(char)
+        elif char.isspace():
+            parts.append("-")
+        elif char.isascii():
+            parts.append("-")
+        elif unicodedata.category(char).startswith(("L", "N")):
+            parts.append(f"-u{ord(char):x}-")
+        else:
+            parts.append("-")
+
+    slug = "".join(parts)
+    slug = re.sub(r"[^a-z0-9_-]+", "-", slug)
+    slug = re.sub(r"[-_]+", "-", slug).strip("-")
     return slug if slug else hex(abs(hash(title)) % 10**8)[2:]
+
+
+def _decode_resource_param(value: str) -> str:
+    """MCP clients may pass dynamic URI params percent-encoded."""
+    return unquote(value)
+
+
+def _get_note_for_resource(note_id: str) -> tuple[str, Optional[dict]]:
+    decoded_note_id = _decode_resource_param(note_id)
+    return decoded_note_id, NOTES.get(decoded_note_id)
 
 
 # ============================================================
@@ -342,7 +408,7 @@ def get_note(note_id: str) -> str:
     URI: note://{note_id}
     示例: note://shopping
     """
-    note = NOTES.get(note_id)
+    note_id, note = _get_note_for_resource(note_id)
     if not note:
         return f"# 404: 笔记不存在\n\nID `{note_id}` 未找到。可用 ID: {', '.join(f'`{k}`' for k in NOTES.keys())}"
 
@@ -365,7 +431,7 @@ def get_note_raw(note_id: str) -> dict:
 
     URI: note://{note_id}/raw
     """
-    note = NOTES.get(note_id)
+    note_id, note = _get_note_for_resource(note_id)
     if not note:
         return {"error": "not_found", "id": note_id, "available_ids": list(NOTES.keys())}
     return note
@@ -510,7 +576,7 @@ def new_note_wizard(
 ## 可用的分类和工具
 - 分类: work / personal / study / todo
 - 保存: 使用 create_note(title, content, tags) 工具
-- 查看: 读取 note://{note_id} 或 notes://all 资源
+- 查看: 读取 note://{{note_id}} 或 notes://all 资源
 
 ## 注意事项
 - 对话式引导,一次问 1-2 个问题

@@ -179,26 +179,119 @@ uv run mcp dev src/smart_notes/server.py
 
 ---
 
-## 测试 6: 完整工作流演练
+## 测试 6: 完整工作流演练（不同启动方式）
 
-模拟一个真实的 AI 辅助笔记场景：
+这一部分验证的是 **Prompt 引导 + Resource 读取 + Tool 写入** 如何被真实客户端组合使用。
+
+注意: Inspector 只能分别调用 Tools / Resources / Prompts,不能自动扮演 LLM 做多步骤决策。因此测试 6 分为三种方式:
+
+| 启动方式 | 适合验证 | 是否能模拟 LLM 自动编排 |
+|----------|----------|-------------------------|
+| `uv run mcp dev src/smart_notes/server.py` | Inspector 中手动调用三大原语 | 否,只能手动模拟 |
+| `uv run python src/smart_notes/server.py` | Claude Desktop / Cursor 等 stdio MCP Client | 是,由客户端 LLM 决策 |
+| `uv run python src/smart_notes/server.py streamable-http` | HTTP MCP endpoint 是否可连接 | 取决于连接它的客户端 |
+
+### 6.1 Inspector 手动模拟
+
+启动:
+
+```bash
+uv run mcp dev src/smart_notes/server.py
+```
+
+在 Inspector 中按下面顺序手动执行,模拟真实 AI 辅助笔记场景:
 
 ```
 用户: "帮我审阅 Python 异步编程的笔记"
-  → LLM 使用 review_note Prompt 获取审阅模板
-  → LLM 读取 note://python-async 资源获取笔记内容
-  → LLM 按审阅标准给出反馈
+  → Prompts 调用 review_note(note_id="python-async")
+  → Resources 读取 note://python-async
+  → 根据 Prompt 返回的审阅标准,手动检查 LLM 应如何给反馈
 
 用户: "把这段内容创建为一篇新笔记"
-  → LLM 使用 new_note_wizard Prompt 引导用户补充信息
-  → LLM 调用 create_note Tool 写入笔记
-  → LLM 通过 note://{new_id} 资源确认写入成功
+  → Prompts 调用 new_note_wizard(topic="MCP 学习心得", category="study")
+  → Tools 调用 create_note 写入笔记
+  → Resources 读取 note://{new_id} 确认写入成功
 
 用户: "这周我学了哪些东西？总结一下"
-  → LLM 读取 notes://all 索引获取全貌
-  → LLM 使用 summarize_notes Prompt 生成总结模板
-  → LLM 给出结构化总结
+  → Resources 读取 notes://all 索引获取全貌
+  → Prompts 调用 summarize_notes(tag="study")
+  → 根据 Prompt 返回的总结模板,手动检查应输出的结构化总结
 ```
+
+**预期**:
+- Inspector 中能分别完成 Prompt / Resource / Tool 调用
+- 能看到 `review_note` 返回的 `ResourceLink` 指向 `note://python-async`
+- `create_note` 写入后,能通过 `note://{new_id}` 立即读到新笔记
+- 理解 Inspector 的限制: 它验证原语是否可用,不验证 LLM 是否会自动选择这些原语
+
+### 6.2 stdio Client 真实编排
+
+启动:
+
+```bash
+uv run python src/smart_notes/server.py
+```
+
+这种方式适合接入支持 MCP stdio 的真实 AI 客户端,例如 Claude Desktop、Cursor 或其他 MCP Client。
+
+在客户端中配置该命令后,用自然语言测试:
+
+```
+帮我审阅 Python 异步编程的笔记
+```
+
+**预期**:
+- 客户端 LLM 能发现 `review_note` Prompt
+- LLM 能根据 Prompt 中的 `ResourceLink` 读取 `note://python-async`
+- LLM 最终给出包含总体评价、具体问题、改进建议的审阅反馈
+
+继续测试:
+
+```
+把这段内容创建为一篇新笔记:
+今天学习了 MCP 的三大原语: Tools 负责动作,Resources 负责数据读取,Prompts 负责对话模板。
+```
+
+**预期**:
+- LLM 可以先用 `new_note_wizard` 引导补充标题、标签等信息
+- 信息确认后调用 `create_note`
+- 写入后读取 `note://{new_id}` 或 `notes://all` 确认结果
+
+最后测试:
+
+```
+这周我学了哪些东西？总结一下
+```
+
+**预期**:
+- LLM 读取 `notes://all` 或相关标签资源
+- LLM 使用 `summarize_notes` 的结构要求
+- 输出按主题、关键收获、后续建议组织的总结
+
+### 6.3 streamable-http 启动检查
+
+启动:
+
+```bash
+uv run python src/smart_notes/server.py streamable-http
+```
+
+HTTP endpoint:
+
+```text
+http://localhost:8000/mcp
+```
+
+如果要从其他机器访问,需要把 Server 的 host 配置为 `0.0.0.0`,并使用服务器 IP:
+
+```text
+http://<server-ip>:8000/mcp
+```
+
+**预期**:
+- HTTP MCP 客户端可以连接 `/mcp`
+- 连接成功后应能看到同样的 Tools / Resources / Prompts
+- 自动编排能力仍取决于客户端是否带 LLM,不是 HTTP 启动方式本身决定的
 
 ---
 
@@ -207,10 +300,10 @@ uv run mcp dev src/smart_notes/server.py
 ### 7.1 检查存储文件
 
 ```bash
-cat ~/.smart_notes.json | python -m json.tool
+uv run python -m json.tool --no-ensure-ascii ~/.smart_notes.json
 ```
 
-**预期**: 包含当前所有笔记的 JSON 数组。
+**预期**: 包含当前所有笔记的 JSON 数组,中文内容正常显示,不会变成 `\uXXXX` 编码。
 
 ### 7.2 重启后数据保留
 
